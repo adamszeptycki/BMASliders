@@ -178,9 +178,10 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)placeHandlers {
-    self.lowerHandler.center = CGPointMake(self.selectedRangeImageView.frame.origin.x - self.lowerHandler.bounds.size.width / 2,
+    CGFloat step = self.frame.size.width / (self.maximumValue + 1);
+    self.lowerHandler.center = CGPointMake(self.currentLowerValue * step,
                                            self.backgroundRangeImageView.center.y);
-    self.upperHandler.center = CGPointMake(CGRectGetMaxX(self.selectedRangeImageView.frame) + self.lowerHandler.bounds.size.width / 2,
+    self.upperHandler.center = CGPointMake(self.currentUpperValue * step,
                                            self.backgroundRangeImageView.center.y);
 }
 
@@ -377,7 +378,7 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (UIEdgeInsets)touchEdgeInsets {
-    return UIEdgeInsetsMake(-10., -10., -10., -10.);
+    return UIEdgeInsetsMake(-50., -50., -50., -50.);
 }
 
 - (UIEdgeInsets)slidingViewEdgeInsets {

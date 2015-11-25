@@ -168,7 +168,7 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)updateSelectedRange {
-    CGFloat width = [self selectedRangeNormalizedLength] * self.slidingView.bounds.size.width;
+    CGFloat width = [self selectedRangeNormalizedLength] * self.slidingView.bounds.size.width; 
     CGFloat originX = [self selectedRangeNormalizedOrigin] * self.slidingView.bounds.size.width + self.slidingView.frame.origin.x;
 
     [self updateView:self.selectedRangeImageView frameChange:^(CGRect *frame) {
@@ -178,8 +178,10 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)placeHandlers {
-    self.lowerHandler.center = CGPointMake(self.selectedRangeImageView.frame.origin.x, self.backgroundRangeImageView.center.y);
-    self.upperHandler.center = CGPointMake(CGRectGetMaxX(self.selectedRangeImageView.frame), self.backgroundRangeImageView.center.y);
+    self.lowerHandler.center = CGPointMake(self.selectedRangeImageView.frame.origin.x - self.lowerHandler.bounds.size.width / 2,
+                                           self.backgroundRangeImageView.center.y);
+    self.upperHandler.center = CGPointMake(CGRectGetMaxX(self.selectedRangeImageView.frame) + self.lowerHandler.bounds.size.width / 2,
+                                           self.backgroundRangeImageView.center.y);
 }
 
 #pragma mark - Convenience accessors

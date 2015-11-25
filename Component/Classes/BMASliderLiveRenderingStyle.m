@@ -66,4 +66,12 @@
     return thumbnail;
 }
 
+- (UIImage*)leftHandlerImage{
+    return [self handlerImage];
+}
+
+-(UIImage *)rightHandlerImage{
+    return [self handlerImage];
+}
+
 @end

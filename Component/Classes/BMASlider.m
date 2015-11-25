@@ -217,7 +217,7 @@
 }
 
 - (UIImage *)handlerImage {
-    return [self.style handlerImage];
+    return [self.style rightHandlerImage] != nil ? [self.style rightHandlerImage] : [self.style leftHandlerImage];
 }
 
 - (CGFloat)lineHeight {

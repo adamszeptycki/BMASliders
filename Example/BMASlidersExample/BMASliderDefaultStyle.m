@@ -38,4 +38,13 @@
     return [UIImage imageNamed:@"range_slider_button" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 }
 
+- (UIImage *)leftHandlerImage{
+    return [self handlerImage];
+}
+
+-(UIImage *)rightHandlerImage{
+    return [self handlerImage];
+}
+
+
 @end

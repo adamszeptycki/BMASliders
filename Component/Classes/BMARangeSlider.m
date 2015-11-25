@@ -130,17 +130,17 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)updateStyle {
-    self.lowerHandler.image = [self handlerImage];
-    self.upperHandler.image = [self handlerImage];
+    self.lowerHandler.image = [self leftHandlerImage];
+    self.upperHandler.image = [self rightHandlerImage];
     self.backgroundRangeImageView.image = [self unselectedLineImage];
     self.selectedRangeImageView.image = [self selectedLineImage];
 
     [self updateView:self.lowerHandler frameChange:^(CGRect *frame) {
-        frame->size = [self handlerImage].size;
+        frame->size = [self leftHandlerImage].size;
     }];
 
     [self updateView:self.upperHandler frameChange:^(CGRect *frame) {
-        frame->size = [self handlerImage].size;
+        frame->size = [self rightHandlerImage].size;
     }];
 
     [self updateView:self.selectedRangeImageView frameChange:^(CGRect *frame) {
@@ -280,8 +280,12 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     return [self.style selectedLineImage];
 }
 
-- (UIImage *)handlerImage {
-    return [self.style handlerImage];
+- (UIImage*)rightHandlerImage{
+    return [self.style rightHandlerImage];
+}
+
+- (UIImage *)leftHandlerImage{
+    return [self.style leftHandlerImage];
 }
 
 - (CGFloat)lineHeight {
@@ -386,7 +390,6 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     if (!isfinite(thresholdValue)) {
         thresholdValue = self.maximumValue;
     }
-    
     return thresholdValue;
 }
 

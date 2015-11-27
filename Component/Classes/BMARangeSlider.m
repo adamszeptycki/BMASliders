@@ -42,6 +42,8 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 @property (nonatomic, readwrite, getter=isUnderflow) BOOL underflow;
 @property (nonatomic, readwrite, getter=isOverflow) BOOL overflow;
 
+@property (nonatomic,assign) CGPoint upperHandlerOrginalCenter;
+@property (nonatomic,assign) CGPoint lowerHandlerOrginalCenter;
 @end
 
 @implementation BMARangeSlider
@@ -89,16 +91,24 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     _continuous = YES;
 }
 
+
 - (void)setUpViews {
     self.backgroundColor = [UIColor clearColor];
     CGPoint center = CGPointMake(self.bounds.size.width / 2., self.bounds.size.height / 2.);
-
+    
     _lowerHandler = [[UIImageView alloc] init];
+    _lowerHandlerGestureRechognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(lowerHandlerDragged:)];
+    [_lowerHandler addGestureRecognizer:_lowerHandlerGestureRechognizer];
+    [_lowerHandler setUserInteractionEnabled:YES];
     _lowerHandler.center = center;
-
+    _upperHandlerOrginalCenter = CGPointZero;
     _upperHandler = [[UIImageView alloc] init];
+    _upperHandlerGestureRechognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(upperHandlerDragged:)];
+    [_upperHandler addGestureRecognizer:_upperHandlerGestureRechognizer];
+    [_upperHandler setUserInteractionEnabled:YES];
     _upperHandler.center = center;
-
+    _lowerHandlerOrginalCenter = CGPointZero;
+    
     _backgroundRangeImageView = [[UIImageView alloc] init];
     [self updateView:_backgroundRangeImageView frameChange:^(CGRect *frame) {
         frame->size.width = self.bounds.size.width;
@@ -106,22 +116,23 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     _backgroundRangeImageView.center = center;
     _backgroundRangeImageView.frame = CGRectIntegral(_backgroundRangeImageView.frame);
     _backgroundRangeImageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
-
+    
     _slidingView = [[UIView alloc] init];
     _slidingView.userInteractionEnabled = NO;
-
+    
     _selectedRangeImageView = [[UIImageView alloc] init];
     _selectedRangeImageView.center = center;
     _selectedRangeImageView.frame = CGRectIntegral(_selectedRangeImageView.frame);
     _selectedRangeImageView.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
-
+    
     [self addSubview:_slidingView];
     [self addSubview:_backgroundRangeImageView];
     [self addSubview:_selectedRangeImageView];
     [self addSubview:_lowerHandler];
     [self addSubview:_upperHandler];
-
     [self updateStyle];
+    [self bringSubviewToFront:_lowerHandler];
+    [self bringSubviewToFront:_upperHandler];
 }
 
 - (void)setStyle:(id<BMASliderStyling>)style {
@@ -134,19 +145,19 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     self.upperHandler.image = [self rightHandlerImage];
     self.backgroundRangeImageView.image = [self unselectedLineImage];
     self.selectedRangeImageView.image = [self selectedLineImage];
-
+    
     [self updateView:self.lowerHandler frameChange:^(CGRect *frame) {
         frame->size = [self leftHandlerImage].size;
     }];
-
+    
     [self updateView:self.upperHandler frameChange:^(CGRect *frame) {
         frame->size = [self rightHandlerImage].size;
     }];
-
+    
     [self updateView:self.selectedRangeImageView frameChange:^(CGRect *frame) {
         frame->size.height = [self lineHeight];
     }];
-
+    
     [self updateView:self.backgroundRangeImageView frameChange:^(CGRect *frame) {
         frame->size.height = [self lineHeight];
     }];
@@ -168,9 +179,9 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)updateSelectedRange {
-    CGFloat width = [self selectedRangeNormalizedLength] * self.slidingView.bounds.size.width; 
+    CGFloat width = [self selectedRangeNormalizedLength] * self.slidingView.bounds.size.width;
     CGFloat originX = [self selectedRangeNormalizedOrigin] * self.slidingView.bounds.size.width + self.slidingView.frame.origin.x;
-
+    
     [self updateView:self.selectedRangeImageView frameChange:^(CGRect *frame) {
         frame->size.width = width;
         frame->origin.x = originX;
@@ -197,56 +208,75 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 
 #pragma mark - User interaction
 
-- (BOOL)beginTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
-    BMARangeSliderHandler targetHandler = [self targetHandlerWithTouch:touch];
-
-    if (targetHandler == BMARangeSliderHandlerLower) {
-        self.lowerHandler.highlighted = YES;
-        [self bringSubviewToFront:self.lowerHandler];
-    } else if (targetHandler == BMARangeSliderHandlerUpper) {
-        self.upperHandler.highlighted = YES;
-        [self bringSubviewToFront:self.upperHandler];
-    }
-
-    return YES;
-}
-
-- (BMARangeSliderHandler)targetHandlerWithTouch:(UITouch *)touch {
-    BMARangeSliderHandler targetHandler = BMARangeSliderHandlerNone;
-
-    CGPoint touchPoint = [touch locationInView:self];
-    BOOL touchesLowerHandler = CGRectContainsPoint(UIEdgeInsetsInsetRect(self.lowerHandler.frame, self.touchEdgeInsets), touchPoint);
-    BOOL touchesUpperHandler = CGRectContainsPoint(UIEdgeInsetsInsetRect(self.upperHandler.frame, self.touchEdgeInsets), touchPoint);
-
-    if (touchesLowerHandler && !touchesUpperHandler) {
-        targetHandler = BMARangeSliderHandlerLower;
-    } else if (touchesUpperHandler && !touchesLowerHandler) {
-        targetHandler = BMARangeSliderHandlerUpper;
-    } else if (touchesLowerHandler && touchesUpperHandler) {
-        if ([self normFromPoint:touchPoint toPoint:self.lowerHandler.center] < [self normFromPoint:touchPoint toPoint:self.upperHandler.center]) {
-            targetHandler = BMARangeSliderHandlerLower;
-        } else {
-            targetHandler = BMARangeSliderHandlerUpper;
-        }
-    }
-
-    return targetHandler;
-}
-
 - (CGFloat)normFromPoint:(CGPoint)p1 toPoint:(CGPoint)p2 {
     CGFloat vx = p2.x - p1.x;
     CGFloat vy = p2.y - p1.y;
     return vx * vx + vy * vy;
 }
 
+
+
+- (void)upperHandlerDragged:(UIPanGestureRecognizer*)panGesture{
+    switch (panGesture.state) {
+        case UIGestureRecognizerStateBegan:
+            self.upperHandlerOrginalCenter = panGesture.view.center;
+            break;
+        case UIGestureRecognizerStateChanged:{
+            CGFloat touchX = self.upperHandlerOrginalCenter.x + [panGesture translationInView:self].x;
+            panGesture.view.center = CGPointMake(touchX,
+                                                   self.backgroundRangeImageView.center.y);
+            break;
+        }
+        case UIGestureRecognizerStateEnded:{
+            CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
+            [self setUpperBound:newValue animated:YES];
+            [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
+            break;
+        }
+        default:
+            if (!CGPointEqualToPoint(self.upperHandlerOrginalCenter,CGPointZero)){
+                panGesture.view.center = self.upperHandlerOrginalCenter;
+                self.upperHandlerOrginalCenter = CGPointZero;
+            }
+            break;
+    }
+}
+
+- (void)lowerHandlerDragged:(UIPanGestureRecognizer*)panGesture{
+    switch (panGesture.state) {
+        case UIGestureRecognizerStateBegan:
+            self.lowerHandlerOrginalCenter = panGesture.view.center;
+            break;
+        case UIGestureRecognizerStateChanged:{
+            CGFloat touchX = self.lowerHandlerOrginalCenter.x + [panGesture translationInView:self].x;
+            panGesture.view.center = CGPointMake(touchX,
+                                                   self.backgroundRangeImageView.center.y);
+            break;
+        }
+        case UIGestureRecognizerStateEnded:{
+            CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
+            [self setLowerBound:newValue animated:YES];
+            if (!self.isOverflow)
+                [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
+            break;
+        }
+        default:
+            if (!CGPointEqualToPoint(self.lowerHandlerOrginalCenter,CGPointZero)){
+                panGesture.view.center = self.lowerHandlerOrginalCenter;
+                self.lowerHandlerOrginalCenter = CGPointZero;
+            }
+            break;
+    }
+}
+
 - (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     if (!self.lowerHandler.highlighted && !self.upperHandler.highlighted) {
         return YES;
     }
-
+    
     CGPoint touchPoint = [touch locationInView:self.slidingView];
     CGFloat newValue = (touchPoint.x / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
-
+    
     if (self.lowerHandler.highlighted) {
         [self setLowerBound:newValue animated:YES];
         if (!self.isOverflow)
@@ -255,20 +285,20 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
         [self setUpperBound:newValue animated:YES];
         [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
     }
-
+    
     if (self.continuous) {
         [self sendActionsForControlEvents:UIControlEventValueChanged];
     }
-
+    
     [self setNeedsLayout];
-
+    
     return YES;
 }
 
 - (void)endTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
     self.lowerHandler.highlighted = NO;
     self.upperHandler.highlighted = NO;
-
+    
     [self sendActionsForControlEvents:UIControlEventValueChanged];
     [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
 }
@@ -383,13 +413,13 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 
 - (UIEdgeInsets)slidingViewEdgeInsets {
     // Make handlers to be tangential with end of background.
-
+    
     return UIEdgeInsetsMake(0., (self.lowerHandler.bounds.size.width / 2.) - 1., 0., (self.lowerHandler.bounds.size.width / 2.) - 1.);
 }
 
 - (CGFloat)overflowThresholdValue {
     CGFloat thresholdValue = self.maximumValue + [self overflowDistance] * (self.maximumValue - self.minimumValue) / [self rangeWidth];
-
+    
     if (!isfinite(thresholdValue)) {
         thresholdValue = self.maximumValue;
     }
@@ -398,7 +428,7 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 
 - (CGFloat)underflowThresholdValue {
     CGFloat thresholdValue = self.minimumValue - [self overflowDistance] * (self.maximumValue - self.minimumValue) / [self rangeWidth];
-
+    
     return thresholdValue;
 }
 

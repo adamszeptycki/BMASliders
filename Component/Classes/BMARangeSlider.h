@@ -74,4 +74,7 @@ IB_DESIGNABLE
 @property (nonatomic) IBInspectable CGFloat minimumDistance;
 @property (nonatomic, getter=isContinuous) IBInspectable BOOL continuous;
 
+@property (nonatomic,strong) UIPanGestureRecognizer *upperHandlerGestureRechognizer;
+@property (nonatomic,strong) UIPanGestureRecognizer *lowerHandlerGestureRechognizer;
+
 @end

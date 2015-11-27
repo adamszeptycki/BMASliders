@@ -225,7 +225,7 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
                 if (!self.isOverflow)
                     [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
             }
-
+            [self placeHandlers];
             [self sendActionsForControlEvents:UIControlEventValueChanged];
             break;
         }
@@ -234,7 +234,7 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     }
 }
 - (UIView*)handlerViewClosestTo:(CGPoint)tap{
-
+    
     if (fabs(self.upperHandler.center.x - tap.x) < fabs(self.lowerHandler.center.x - tap.x)) {
         return self.upperHandler;
     }else{
@@ -261,7 +261,9 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
             CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
             [self setUpperBound:newValue animated:YES];
             [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
+            [self placeHandlers];
             [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
+            
             break;
         }
         default:
@@ -295,7 +297,9 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
             if (!self.isOverflow)
                 [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
             
+            [self placeHandlers];
             [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
+            
             break;
         }
         default:

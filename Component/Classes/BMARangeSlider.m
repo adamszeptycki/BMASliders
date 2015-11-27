@@ -133,7 +133,9 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     [self updateStyle];
     [self bringSubviewToFront:_lowerHandler];
     [self bringSubviewToFront:_upperHandler];
+    [self addGestureRecognizer:[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tap:)]];
 }
+
 
 - (void)setStyle:(id<BMASliderStyling>)style {
     _style = style;
@@ -208,12 +210,37 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 
 #pragma mark - User interaction
 
-- (CGFloat)normFromPoint:(CGPoint)p1 toPoint:(CGPoint)p2 {
-    CGFloat vx = p2.x - p1.x;
-    CGFloat vy = p2.y - p1.y;
-    return vx * vx + vy * vy;
-}
+- (void)tap:(UITapGestureRecognizer*)tapRecognizer{
+    switch (tapRecognizer.state) {
+        case UIGestureRecognizerStateEnded:{
+            CGPoint tap = [tapRecognizer locationInView:self];
+            UIView *closesthandler = [self handlerViewClosestTo:tap];
+            closesthandler.center = CGPointMake(tap.x, closesthandler.center.y);
+            CGFloat newValue = (closesthandler.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
+            if(closesthandler == self.upperHandler){
+                [self setUpperBound:newValue animated:YES];
+                [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
+            }else{
+                [self setLowerBound:newValue animated:YES];
+                if (!self.isOverflow)
+                    [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
+            }
 
+            [self sendActionsForControlEvents:UIControlEventValueChanged];
+            break;
+        }
+        default:
+            break;
+    }
+}
+- (UIView*)handlerViewClosestTo:(CGPoint)tap{
+
+    if (fabs(self.upperHandler.center.x - tap.x) < fabs(self.lowerHandler.center.x - tap.x)) {
+        return self.upperHandler;
+    }else{
+        return self.lowerHandler;
+    }
+}
 
 
 - (void)upperHandlerDragged:(UIPanGestureRecognizer*)panGesture{
@@ -223,14 +250,18 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
             break;
         case UIGestureRecognizerStateChanged:{
             CGFloat touchX = self.upperHandlerOrginalCenter.x + [panGesture translationInView:self].x;
-            panGesture.view.center = CGPointMake(touchX,
-                                                   self.backgroundRangeImageView.center.y);
+            panGesture.view.center = CGPointMake(touchX, self.backgroundRangeImageView.center.y);
+            CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
+            [self setUpperBound:newValue animated:YES];
+            [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
+            [self sendActionsForControlEvents:UIControlEventValueChanged];
             break;
         }
         case UIGestureRecognizerStateEnded:{
             CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
             [self setUpperBound:newValue animated:YES];
             [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
+            [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
             break;
         }
         default:
@@ -250,7 +281,12 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
         case UIGestureRecognizerStateChanged:{
             CGFloat touchX = self.lowerHandlerOrginalCenter.x + [panGesture translationInView:self].x;
             panGesture.view.center = CGPointMake(touchX,
-                                                   self.backgroundRangeImageView.center.y);
+                                                 self.backgroundRangeImageView.center.y);
+            CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
+            [self setLowerBound:newValue animated:YES];
+            if (!self.isOverflow)
+                [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
+            [self sendActionsForControlEvents:UIControlEventValueChanged];
             break;
         }
         case UIGestureRecognizerStateEnded:{
@@ -258,6 +294,8 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
             [self setLowerBound:newValue animated:YES];
             if (!self.isOverflow)
                 [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
+            
+            [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
             break;
         }
         default:
@@ -269,39 +307,8 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
     }
 }
 
-- (BOOL)continueTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
-    if (!self.lowerHandler.highlighted && !self.upperHandler.highlighted) {
-        return YES;
-    }
-    
-    CGPoint touchPoint = [touch locationInView:self.slidingView];
-    CGFloat newValue = (touchPoint.x / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
-    
-    if (self.lowerHandler.highlighted) {
-        [self setLowerBound:newValue animated:YES];
-        if (!self.isOverflow)
-            [self setUpperBound:MAX(_currentUpperValue, self.currentLowerValue + self.minimumDistance) animated:YES];
-    } else if (self.upperHandler.highlighted) {
-        [self setUpperBound:newValue animated:YES];
-        [self setLowerBound:MIN(_currentLowerValue, self.currentUpperValue - self.minimumDistance) animated:YES];
-    }
-    
-    if (self.continuous) {
-        [self sendActionsForControlEvents:UIControlEventValueChanged];
-    }
-    
-    [self setNeedsLayout];
-    
-    return YES;
-}
 
-- (void)endTrackingWithTouch:(UITouch *)touch withEvent:(UIEvent *)event {
-    self.lowerHandler.highlighted = NO;
-    self.upperHandler.highlighted = NO;
-    
-    [self sendActionsForControlEvents:UIControlEventValueChanged];
-    [self sendActionsForControlEvents:UIControlEventEditingDidEnd];
-}
+
 
 #pragma mark - Styling
 
@@ -337,14 +344,11 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)setLowerBound:(CGFloat)value animated:(BOOL)animated {
-    [self executeBlock:^{
-        self.underflow = value < [self underflowThresholdValue];
-        _currentLowerValue = [self sanitizeValue:value withAdditionalMinimum:0. additionalMaximum:self.minimumDistance];
-        
-        if (_currentLowerValue > self.currentUpperValue) {
-            self.currentUpperValue = _currentLowerValue;
-        }
-    } animated:animated];
+    self.underflow = value < [self underflowThresholdValue];
+    _currentLowerValue = [self sanitizeValue:value withAdditionalMinimum:0. additionalMaximum:self.minimumDistance];
+    if (_currentLowerValue > self.currentUpperValue) {
+        self.currentUpperValue = _currentLowerValue;
+    }
 }
 
 - (void)setCurrentUpperValue:(CGFloat)value {
@@ -352,13 +356,11 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)setUpperBound:(CGFloat)value animated:(BOOL)animated {
-    [self executeBlock:^{
-        self.overflow = value > [self overflowThresholdValue];
-        _currentUpperValue = [self sanitizeValue:value withAdditionalMinimum:self.minimumDistance additionalMaximum:0.];
-        if (_currentUpperValue < self.currentLowerValue) {
-            self.currentLowerValue = _currentUpperValue;
-        }
-    } animated:animated];
+    self.overflow = value > [self overflowThresholdValue];
+    _currentUpperValue = [self sanitizeValue:value withAdditionalMinimum:self.minimumDistance additionalMaximum:0.];
+    if (_currentUpperValue < self.currentLowerValue) {
+        self.currentLowerValue = _currentUpperValue;
+    }
 }
 
 - (void)executeBlock:(void (^)(void))block animated:(BOOL)animated {

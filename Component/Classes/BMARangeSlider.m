@@ -244,12 +244,17 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 
 
 - (void)upperHandlerDragged:(UIPanGestureRecognizer*)panGesture{
+    CGFloat distance = self.frame.size.width / (self.maximumValue + 1);
+    CGFloat touchX = self.upperHandlerOrginalCenter.x + [panGesture translationInView:self].x;
+    if (!CGPointEqualToPoint(self.upperHandlerOrginalCenter,CGPointZero) && touchX - self.lowerHandler.center.x <= distance){
+        [self placeHandlers];
+        return;
+    }
     switch (panGesture.state) {
         case UIGestureRecognizerStateBegan:
             self.upperHandlerOrginalCenter = panGesture.view.center;
             break;
         case UIGestureRecognizerStateChanged:{
-            CGFloat touchX = self.upperHandlerOrginalCenter.x + [panGesture translationInView:self].x;
             panGesture.view.center = CGPointMake(touchX, self.backgroundRangeImageView.center.y);
             CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
             [self setUpperBound:newValue animated:YES];
@@ -276,12 +281,17 @@ typedef NS_ENUM(NSUInteger, BMARangeSliderHandler) {
 }
 
 - (void)lowerHandlerDragged:(UIPanGestureRecognizer*)panGesture{
+    CGFloat distance = self.frame.size.width / (self.maximumValue + 1);
+    CGFloat touchX = self.lowerHandlerOrginalCenter.x + [panGesture translationInView:self].x;
+    if (!CGPointEqualToPoint(self.lowerHandlerOrginalCenter,CGPointZero) && self.upperHandler.center.x - touchX <= distance){
+        [self placeHandlers];
+        return;
+    }
     switch (panGesture.state) {
         case UIGestureRecognizerStateBegan:
             self.lowerHandlerOrginalCenter = panGesture.view.center;
             break;
         case UIGestureRecognizerStateChanged:{
-            CGFloat touchX = self.lowerHandlerOrginalCenter.x + [panGesture translationInView:self].x;
             panGesture.view.center = CGPointMake(touchX,
                                                  self.backgroundRangeImageView.center.y);
             CGFloat newValue = (panGesture.view.center.x  / [self rangeWidth]) * (self.maximumValue - self.minimumValue) + self.minimumValue;
